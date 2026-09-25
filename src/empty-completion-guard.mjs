@@ -438,6 +438,7 @@ export class EmptyCompletionGuard extends Transform {
   #maxPreludeBytes;
   #maxPreludeMs;
   #maxStreamStallMs;
+  #releaseOnLiveness;
   #timer;
   #receivedBytes = 0;
 
@@ -447,6 +448,7 @@ export class EmptyCompletionGuard extends Transform {
       maxPreludeBytes = MAX_PRECONTENT_BYTES,
       maxPreludeMs = MAX_PRECONTENT_MS,
       maxStreamStallMs = maxPreludeMs,
+      releaseOnLiveness = true,
     } = {},
   ) {
     super();
@@ -468,6 +470,7 @@ export class EmptyCompletionGuard extends Transform {
       Number.isFinite(maxStreamStallMs) && maxStreamStallMs >= 0
         ? maxStreamStallMs
         : this.#maxPreludeMs;
+    this.#releaseOnLiveness = releaseOnLiveness !== false;
     if (this.#eventStream || this.#headerlessDetector) this.#startTimer();
   }
 
@@ -712,7 +715,7 @@ export class EmptyCompletionGuard extends Transform {
     // Neither content nor terminal. If it proves the upstream is generating,
     // stop holding: the cost of the hold is paid by every reasoning turn, while
     // the empty completions it repairs are a fraction of a percent of them.
-    if (!this.#released && this.#livenessOf(eventType, dataText) === true) {
+    if (this.#releaseOnLiveness && !this.#released && this.#livenessOf(eventType, dataText) === true) {
       this.#release({ liveness: true });
     }
   }

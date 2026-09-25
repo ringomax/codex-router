@@ -50,11 +50,13 @@ async function runGuard(
     chunkSize = 0,
     maxPreludeBytes,
     maxPreludeMs,
+    releaseOnLiveness,
   } = {},
 ) {
   const guard = new EmptyCompletionGuard(contentType, {
     ...(maxPreludeBytes === undefined ? {} : { maxPreludeBytes }),
     ...(maxPreludeMs === undefined ? {} : { maxPreludeMs }),
+    ...(releaseOnLiveness === undefined ? {} : { releaseOnLiveness }),
   });
   const chunks = [];
   const collector = new Writable({
@@ -118,6 +120,18 @@ const EMPTY_TURN = [
   'data: {"type":"response.done","response":{"id":"r1"}}',
   "",
 ].join("\n");
+
+test("a provider that holds reasoning can retry a reasoning-only completion", async () => {
+  const result = await runGuard(EMPTY_TURN, { releaseOnLiveness: false });
+  assert.equal(result.empty, true);
+  assert.equal(result.suppressed, true);
+  assert.equal(result.live, false);
+  assert.equal(result.body, "");
+
+  const answered = await runGuard(CONTENT_TURN, { releaseOnLiveness: false });
+  assert.equal(answered.empty, false);
+  assert.equal(answered.body, CONTENT_TURN);
+});
 
 // Empty without ever proving it was generating: prologue, then a terminal. The
 // hold costs nothing here (a silent upstream has no prologue worth waiting for)

@@ -5058,6 +5058,9 @@ async function handleResponses(request, response, requestUrl) {
               maxStreamStallMs: canonicalProviderId(route.provider) === "grok-oauth"
                 ? GROK_STREAM_STALL_MS
                 : preludeMs,
+              // Devin can finish after emitting only reasoning. Keep its
+              // prologue replaceable so the empty-completion retry can run.
+              releaseOnLiveness: canonicalProviderId(route.provider) !== "devin-oauth",
             })
           : undefined;
       if (guard) {
