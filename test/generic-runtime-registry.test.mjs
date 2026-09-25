@@ -73,12 +73,15 @@ test("runtime providers merge enabled generic descriptors without changing check
       requestProfile: "codex-encrypted-schema",
       priority: 100,
     }),
-    userModelEntry({
-      providerId: "runtime-responses",
-      upstreamId: "vendor/model-b",
-      requestProfile: "auto-tool-choice",
-      priority: 101,
-    }),
+    {
+      ...userModelEntry({
+        providerId: "runtime-responses",
+        upstreamId: "vendor/model-b",
+        requestProfile: "auto-tool-choice",
+        priority: 101,
+      }),
+      requestAliases: ["legacy-model-b"],
+    },
     userModelEntry({
       providerId: "runtime-chat",
       upstreamId: "vendor/forged-profile",
@@ -123,6 +126,7 @@ test("runtime providers merge enabled generic descriptors without changing check
           .map((entry) => ({ id: entry.id, adapter: entry.adapter, protocol: entry.protocol, headers: entry.headers })),
         models: genericModels.map((model) => ({ slug: model.slug, requestProfile: model.requestProfile })),
         apiModels: registry.API_MODELS.filter((model) => model.provider.startsWith("runtime-")).map((model) => model.slug),
+        requestAlias: registry.MODEL_BY_SLUG.get("legacy-model-b")?.slug,
         selectedConfigured: selection.selectedConfiguredListedModels()
           .filter((model) => model.provider.startsWith("runtime-"))
           .map((model) => model.slug),
@@ -149,6 +153,7 @@ test("runtime providers merge enabled generic descriptors without changing check
       "runtime-responses/vendor/model-b",
       "runtime-needs-key/credential-bound-model",
     ]);
+    assert.equal(result.requestAlias, "runtime-responses/vendor/model-b");
     assert.deepEqual(result.selectedConfigured, [
       "runtime-chat/vendor/model-a",
       "runtime-responses/vendor/model-b",

@@ -34,6 +34,7 @@ import { syncRoutedCodexAgents } from "./codex-agent-catalog.mjs";
 import {
   MODEL_BY_SLUG,
   MODEL_SLUG_ALIASES,
+  REQUEST_MODEL_ALIASES,
 } from "./model-registry.mjs";
 import {
   applyMultiAgentCapabilities,
@@ -1248,7 +1249,7 @@ export function publishCatalog({ refreshNative = refresh, output = true } = {}) 
           includeNative: openaiAuthenticated,
           pickerOrder,
         }),
-        aliases: {},
+        aliases: Object.fromEntries(REQUEST_MODEL_ALIASES),
       };
   const snapshots = new Map(
     [MERGED_CATALOG_PATH, NATIVE_ALIAS_PATH, ANNOUNCED_MODELS_PATH]

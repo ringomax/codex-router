@@ -957,6 +957,7 @@ function mergeUserModels(base, staticAliases) {
     models.map((model) => [`${model.provider}\0${model.upstreamModel}`, model]),
   );
   const aliases = new Map();
+  const requestAliases = new Map();
   const userModels = new Set();
   // Slug -> why it was skipped. The router cites this when a caller asks for a
   // slug that therefore has no route (#689), and the doctor reports it; the
@@ -1013,8 +1014,23 @@ function mergeUserModels(base, staticAliases) {
       skip(model, problem);
       continue;
     }
+    const requestedAliases = model.requestAliases;
+    if (requestedAliases !== undefined && (
+      !Array.isArray(requestedAliases)
+      || requestedAliases.some((alias) =>
+        typeof alias !== "string"
+        || !/^[a-z0-9][a-z0-9._-]*$/.test(alias)
+        || slugs.has(alias)
+        || staticAliases.has(alias)
+        || requestAliases.has(alias))
+      || new Set(requestedAliases).size !== requestedAliases.length
+    )) {
+      skip(model, `model ${model.slug} has an invalid or conflicting request alias`);
+      continue;
+    }
     slugs.add(model.slug);
     gatewayModels.add(model.gatewayModel);
+    for (const alias of requestedAliases || []) requestAliases.set(alias, model.slug);
     const frozen = normalizedModel(model, base.providers.get(model.provider), { curated: true });
     userModels.add(frozen);
     models.push(frozen);
@@ -1035,6 +1051,7 @@ function mergeUserModels(base, staticAliases) {
     models: Object.freeze(kept),
     warnings: Object.freeze(warnings),
     aliases: new Map(aliases),
+    requestAliases: new Map(requestAliases),
     skipped: new Map(skipped),
     // Which surviving routes came from the operator's overlay rather than the
     // checked-in tree. The merge is the only place that still knows: both
@@ -1083,12 +1100,19 @@ export const MODEL_SLUG_ALIASES = new Map([
   ...staticAliases,
   ...merged.aliases,
 ]);
+export const REQUEST_MODEL_ALIASES = new Map(merged.requestAliases);
 export const LISTED_MODELS = Object.freeze(MODELS.filter((model) => model.listed));
 export const API_MODELS = Object.freeze(
   MODELS.filter((model) => RUNTIME_PROVIDERS.get(model.provider)?.kind === "openai-compatible"),
 );
 export const MODEL_BY_SLUG = new Map(MODELS.map((model) => [model.slug, model]));
 for (const [from, to] of MODEL_SLUG_ALIASES) {
+  const replacement = MODEL_BY_SLUG.get(to);
+  if (replacement) MODEL_BY_SLUG.set(from, replacement);
+}
+// Request aliases accept old client model ids without publishing duplicate
+// picker entries or changing the signed-out native catalog assignment.
+for (const [from, to] of REQUEST_MODEL_ALIASES) {
   const replacement = MODEL_BY_SLUG.get(to);
   if (replacement) MODEL_BY_SLUG.set(from, replacement);
 }
